@@ -1,0 +1,182 @@
+<?php
+ use TCD\Helper\UI;
+ use TCD\Helper\Sanitization as San;
+
+/**
+ * ページビルダーウィジェット登録
+ */
+add_page_builder_widget(array(
+	'id' => 'pb-widget-catchcopy',
+	'form' => 'form_page_builder_widget_catchcopy',
+	'form_rightbar' => 'form_rightbar_page_builder_widget', // 標準右サイドバー
+	'display' => 'display_page_builder_widget_catchcopy',
+	'title' => __('Catchphrase', 'tcd-w'),
+	'priority' => 11
+));
+
+/**
+ * フォーム
+ */
+function form_page_builder_widget_catchcopy($values = array()) {
+	// デフォルト値
+	$default_values = apply_filters('page_builder_widget_catchcopy_default_values', array(
+		'widget_index' => '',
+		'catchcopy' => '',
+		'font_size' => '20',
+		'font_size_mobile' => '20',
+		'font_color' => '#333333',
+		'font_family' => 1,
+		'text_align' => 'left',
+		'text_align_mobile' => 'left'
+	), 'form');
+
+	// デフォルト値に入力値をマージ
+	$values = array_merge($default_values, (array) $values);
+
+	// 旧カラーピッカー対策
+	if (preg_match('/^[0-9a-f]{6}$/i', $values['font_color'])) {
+		$values['font_color'] = '#'.strtolower($values['font_color']);
+	}
+
+	// text_align選択肢
+	$text_align_options = array(
+		'left' => __('Align left', 'tcd-w'),
+		'center' => __('Align center', 'tcd-w'),
+		'right' => __('Align right', 'tcd-w')
+	);
+?>
+
+<div class="form-field">
+	<h4><?php _e('Catchphrase', 'tcd-w'); ?></h4>
+	<textarea name="pagebuilder[widget][<?php echo esc_attr($values['widget_index']); ?>][catchcopy]" rows="4"><?php echo esc_textarea($values['catchcopy']); ?></textarea>
+</div>
+
+<div class="form-field">
+	<h4><?php _e('Font size', 'tcd-w'); ?></h4>
+	<input type="number" name="pagebuilder[widget][<?php echo esc_attr($values['widget_index']); ?>][font_size]" value="<?php echo esc_attr($values['font_size']); ?>" class="small-text" min="0" /> px
+</div>
+
+<div class="form-field">
+	<h4><?php _e('Font size for mobile', 'tcd-w'); ?></h4>
+	<input type="number" name="pagebuilder[widget][<?php echo esc_attr($values['widget_index']); ?>][font_size_mobile]" value="<?php echo esc_attr($values['font_size_mobile']); ?>" class="small-text" min="0" /> px
+</div>
+
+<div class="form-field">
+	<h4><?php _e('Font color', 'tcd-w'); ?></h4>
+	<input type="text" name="pagebuilder[widget][<?php echo esc_attr($values['widget_index']); ?>][font_color]" value="<?php echo esc_attr($values['font_color']); ?>" class="pb-input-narrow pb-wp-color-picker" data-default-color="<?php echo esc_attr($default_values['font_color']); ?>" />
+</div>
+
+<div class="form-field">
+	<h4><?php _e('Font family', 'tcd-w'); ?></h4>
+	<?php echo UI\font_select( 'pagebuilder[widget][' . esc_attr($values['widget_index']) . '][font_family]', $values['font_family'] ); ?>
+</div>
+
+<div class="form-field form-field-radio">
+	<h4><?php _e('Text align', 'tcd-w'); ?></h4>
+	<?php
+		$radio_html = array();
+		foreach($text_align_options as $key => $value) {
+			$attr = '';
+			if ($values['text_align'] == $key) {
+				$attr .= ' checked="checked"';
+			}
+			$radio_html[] = '<label><input type="radio" name="pagebuilder[widget]['.esc_attr($values['widget_index']).'][text_align]" value="'.esc_attr($key).'"'.$attr.' />'.esc_html($value).'</label>';
+		}
+		echo implode("<br>\n\t", $radio_html);
+	?>
+</div>
+
+<div class="form-field form-field-radio">
+	<h4><?php _e('Text align for mobile', 'tcd-w'); ?></h4>
+	<?php
+		$radio_html = array();
+		foreach($text_align_options as $key => $value) {
+			$attr = '';
+			if ($values['text_align_mobile'] == $key) {
+				$attr .= ' checked="checked"';
+			}
+			$radio_html[] = '<label><input type="radio" name="pagebuilder[widget]['.esc_attr($values['widget_index']).'][text_align_mobile]" value="'.esc_attr($key).'"'.$attr.' />'.esc_html($value).'</label>';
+		}
+		echo implode("<br>\n\t", $radio_html);
+	?>
+</div>
+
+<?php
+}
+
+/**
+ * フロント出力
+ */
+function display_page_builder_widget_catchcopy($values = array()) {
+	if (empty($values['catchcopy'])) return;
+
+	$class = 'pb_catchcopy';
+
+	$font_family_raw = $values['font_family'];
+	$map = [
+	 'type1' => 1,
+	 'type2' => 1,
+	 'type3' => 2,
+	 '1'     => 1,
+	 '2'     => 2,
+	 '3'     => 3,
+	 1       => 1,
+	 2       => 2,
+	 3       => 3,
+   ];
+   
+   // 不明な値は 1 にフォールバック
+   $font_family = $map[$font_family_raw] ?? 1;
+
+	if (!empty($font_family)) {
+		$class .= ' pb_font_family_'.$font_family;
+	}
+
+	echo '<h3 class="'.$class.'">'.str_replace(array("\r\n", "\r", "\n"), '<br>', esc_html($values['catchcopy'])).'</h3>';
+}
+
+/**
+ * フロント用css
+ */
+function page_builder_widget_catchcopy_sctipts_styles() {
+	if (is_singular() && is_page_builder() && page_builder_has_widget('pb-widget-catchcopy')) {
+		add_action('page_builder_css', 'page_builder_widget_catchcopy_css');
+	}
+}
+add_action('wp', 'page_builder_widget_catchcopy_sctipts_styles');
+
+function page_builder_widget_catchcopy_css() {
+	// 現記事で使用しているcatchcopyコンテンツデータを取得
+	$post_widgets = get_page_builder_post_widgets(get_the_ID(), 'pb-widget-catchcopy');
+	if ($post_widgets) {
+
+		$css = '';
+		$css_mobile = '';
+
+		foreach($post_widgets as $post_widget) {
+			$widget_index = $post_widget['widget_index'];
+			$values = $post_widget['widget_value'];
+
+			// 旧カラーピッカー対策
+			if (preg_match('/^[0-9a-f]{6}$/i', $values['font_color'])) {
+				$values['font_color'] = '#'.$values['font_color'];
+			}
+
+			// text_align_mobileなし対策
+			if (empty($values['text_align_mobile'])) {
+				$values['text_align_mobile'] = $values['text_align'];
+			}
+
+			$css .= $post_widget['css_class'].' .pb_catchcopy { color: '.esc_attr($values['font_color']).'; font-size: '.esc_attr($values['font_size']).'px; text-align: '.esc_attr($values['text_align']).';  }'."\n";
+
+			$css_mobile .= '  '.$post_widget['css_class'].' .pb_catchcopy { font-size: '.esc_attr($values['font_size_mobile']).'px; text-align: '.esc_attr($values['text_align_mobile']).';  }'."\n";
+		}
+
+		echo $css;
+
+		echo "@media only screen and (max-width: 767px) {\n";
+		echo $css_mobile;
+		echo "}\n";
+
+	}
+}
